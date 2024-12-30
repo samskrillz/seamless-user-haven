@@ -68,19 +68,41 @@ export function DriverDashboard() {
     const channel = supabase
       .channel('public:rides')
       .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'rides' },
+        { event: 'INSERT', schema: 'public', table: 'rides' },
         (payload) => {
-          if (payload.eventType === 'INSERT' && payload.new.status === 'pending') {
+          console.log('New ride:', payload);
+          if (payload.new.status === 'pending') {
             setAvailableRides(current => [payload.new as Ride, ...current]);
-          } else if (payload.eventType === 'UPDATE') {
-            const updatedRide = payload.new as Ride;
-            setAvailableRides(current => 
-              current.filter(ride => ride.id !== updatedRide.id)
-            );
+          }
+        }
+      )
+      .on('postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'rides' },
+        (payload) => {
+          console.log('Updated ride:', payload);
+          const updatedRide = payload.new as Ride;
+          
+          // Handle updates for active ride
+          if (activeRide && activeRide.id === updatedRide.id) {
             if (['accepted', 'in_progress'].includes(updatedRide.status)) {
               setActiveRide(updatedRide);
             } else if (updatedRide.status === 'completed') {
               setActiveRide(null);
+            }
+          }
+          
+          // Remove ride from available rides if it's no longer pending
+          if (updatedRide.status !== 'pending') {
+            setAvailableRides(current => 
+              current.filter(ride => ride.id !== updatedRide.id)
+            );
+          }
+          
+          // If this is our new active ride, set it
+          if (['accepted', 'in_progress'].includes(updatedRide.status)) {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user && updatedRide.driver_id === user.id) {
+              setActiveRide(updatedRide);
             }
           }
         }
@@ -90,7 +112,7 @@ export function DriverDashboard() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [toast]);
+  }, [toast, activeRide]);
 
   const acceptRide = async (rideId: string) => {
     try {
