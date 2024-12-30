@@ -16,76 +16,87 @@ export function LocationMap({
   zoom = 12 
 }: LocationMapProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
-  const mapInstance = useRef<mapboxgl.Map | null>(null);
+  const mapRef = useRef<mapboxgl.Map | null>(null);
   const markersRef = useRef<mapboxgl.Marker[]>([]);
+  const clickListenerRef = useRef<((e: mapboxgl.MapMouseEvent) => void) | null>(null);
 
   // Initialize map
   useEffect(() => {
-    if (!mapContainer.current || mapInstance.current) return;
+    if (!mapContainer.current || mapRef.current) return;
 
-    try {
-      // Use environment variable or fallback to a default token
-      mapboxgl.accessToken = 'pk.eyJ1IjoibG92YWJsZSIsImEiOiJjbHR3Z3k2NmowMDNqMmltb2V5ZnI0ZXd2In0.JDk_wHIhE_uVrPUm6YhMwA';
-      
-      const map = new mapboxgl.Map({
-        container: mapContainer.current,
-        style: 'mapbox://styles/mapbox/streets-v12',
-        center,
-        zoom,
-      });
-
-      map.addControl(new mapboxgl.NavigationControl(), 'top-right');
-
-      if (onLocationSelect) {
-        map.on('click', (e) => {
-          const { lat, lng } = e.lngLat;
-          onLocationSelect(lat, lng);
+    const initializeMap = () => {
+      try {
+        mapboxgl.accessToken = process.env.VITE_MAPBOX_TOKEN || 'pk.eyJ1IjoibG92YWJsZSIsImEiOiJjbHR3Z3k2NmowMDNqMmltb2V5ZnI0ZXd2In0.JDk_wHIhE_uVrPUm6YhMwA';
+        
+        const map = new mapboxgl.Map({
+          container: mapContainer.current!,
+          style: 'mapbox://styles/mapbox/streets-v12',
+          center,
+          zoom,
         });
-      }
 
-      mapInstance.current = map;
+        map.addControl(new mapboxgl.NavigationControl(), 'top-right');
 
-      // Cleanup function
-      return () => {
-        if (mapInstance.current) {
-          mapInstance.current.remove();
-          mapInstance.current = null;
+        if (onLocationSelect) {
+          const clickHandler = (e: mapboxgl.MapMouseEvent) => {
+            const { lat, lng } = e.lngLat;
+            onLocationSelect(lat, lng);
+          };
+          
+          map.on('click', clickHandler);
+          clickListenerRef.current = clickHandler;
         }
-      };
-    } catch (error) {
-      console.error('Error initializing map:', error);
-    }
+
+        mapRef.current = map;
+      } catch (error) {
+        console.error('Error initializing map:', error);
+      }
+    };
+
+    initializeMap();
+
+    return () => {
+      if (clickListenerRef.current && mapRef.current) {
+        mapRef.current.off('click', clickListenerRef.current);
+      }
+      if (mapRef.current) {
+        mapRef.current.remove();
+        mapRef.current = null;
+      }
+    };
   }, [center, zoom, onLocationSelect]);
 
   // Handle markers
   useEffect(() => {
-    if (!mapInstance.current) return;
+    if (!mapRef.current) return;
 
-    try {
-      // Remove existing markers
-      markersRef.current.forEach(marker => marker.remove());
-      markersRef.current = [];
-      
-      // Add new markers
-      markersRef.current = markers.map(({ lat, lng, color = '#FF0000' }) => {
-        const el = document.createElement('div');
-        el.className = 'w-8 h-8 rounded-full bg-primary border-2 border-white shadow-lg';
-        el.style.backgroundColor = color;
-        
-        const marker = new mapboxgl.Marker(el)
-          .setLngLat([lng, lat])
-          .addTo(mapInstance.current!);
-
-        return marker;
-      });
-
-      return () => {
+    const updateMarkers = () => {
+      try {
+        // Remove existing markers
         markersRef.current.forEach(marker => marker.remove());
         markersRef.current = [];
-      };
-    } catch (error) {
-      console.error('Error handling markers:', error);
-    }
+
+        // Add new markers
+        markersRef.current = markers.map(({ lat, lng, color = '#FF0000' }) => {
+          const el = document.createElement('div');
+          el.className = 'w-8 h-8 rounded-full bg-primary border-2 border-white shadow-lg';
+          el.style.backgroundColor = color;
+          
+          return new mapboxgl.Marker(el)
+            .setLngLat([lng, lat])
+            .addTo(mapRef.current!);
+        });
+      } catch (error) {
+        console.error('Error handling markers:', error);
+      }
+    };
+
+    updateMarkers();
+
+    return () => {
+      markersRef.current.forEach(marker => marker.remove());
+      markersRef.current = [];
+    };
   }, [markers]);
 
   return (
