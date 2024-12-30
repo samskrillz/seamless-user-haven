@@ -26,7 +26,8 @@ export function LocationMap({
 
     const initializeMap = () => {
       try {
-        mapboxgl.accessToken = process.env.VITE_MAPBOX_TOKEN || 'pk.eyJ1IjoibG92YWJsZSIsImEiOiJjbHR3Z3k2NmowMDNqMmltb2V5ZnI0ZXd2In0.JDk_wHIhE_uVrPUm6YhMwA';
+        // Use a default token - in production, this should be replaced with your own token
+        mapboxgl.accessToken = 'pk.eyJ1IjoibG92YWJsZSIsImEiOiJjbHR3Z3k2NmowMDNqMmltb2V5ZnI0ZXd2In0.JDk_wHIhE_uVrPUm6YhMwA';
         
         const map = new mapboxgl.Map({
           container: mapContainer.current!,
