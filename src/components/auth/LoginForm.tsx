@@ -22,17 +22,19 @@ export function LoginForm() {
     setIsLoading(true);
 
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
-        options: {
-          data: {
-            user_type: userType,
-          },
-        },
       });
 
       if (error) throw error;
+
+      // Update user metadata with user type after successful login
+      const { error: updateError } = await supabase.auth.updateUser({
+        data: { user_type: userType }
+      });
+
+      if (updateError) throw updateError;
 
       toast({
         title: "Welcome back!",
