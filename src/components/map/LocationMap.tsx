@@ -16,40 +16,49 @@ export function LocationMap({
   zoom = 12 
 }: LocationMapProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
-  const map = useRef<mapboxgl.Map | null>(null);
-  const [markerRefs, setMarkerRefs] = useState<mapboxgl.Marker[]>([]);
+  const mapInstance = useRef<mapboxgl.Map | null>(null);
+  const markersRef = useRef<mapboxgl.Marker[]>([]);
 
+  // Initialize map
   useEffect(() => {
-    if (!mapContainer.current) return;
+    if (!mapContainer.current || mapInstance.current) return;
 
+    // Use a valid Mapbox token
     mapboxgl.accessToken = 'pk.eyJ1IjoibG92YWJsZSIsImEiOiJjbHR3Z3k2NmowMDNqMmltb2V5ZnI0ZXd2In0.JDk_wHIhE_uVrPUm6YhMwA';
     
-    map.current = new mapboxgl.Map({
+    const map = new mapboxgl.Map({
       container: mapContainer.current,
       style: 'mapbox://styles/mapbox/streets-v12',
       center,
       zoom,
     });
 
-    map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
+    map.addControl(new mapboxgl.NavigationControl(), 'top-right');
 
     if (onLocationSelect) {
-      map.current.on('click', (e) => {
+      map.on('click', (e) => {
         onLocationSelect(e.lngLat.lat, e.lngLat.lng);
       });
     }
 
+    mapInstance.current = map;
+
+    // Cleanup function
     return () => {
-      map.current?.remove();
+      if (mapInstance.current) {
+        mapInstance.current.remove();
+        mapInstance.current = null;
+      }
     };
   }, []);
 
-  // Update markers when they change
+  // Handle markers
   useEffect(() => {
-    if (!map.current) return;
+    if (!mapInstance.current) return;
 
     // Remove existing markers
-    markerRefs.forEach(marker => marker.remove());
+    markersRef.current.forEach(marker => marker.remove());
+    markersRef.current = [];
     
     // Add new markers
     const newMarkers = markers.map(({ lat, lng, color = '#FF0000' }) => {
@@ -57,15 +66,18 @@ export function LocationMap({
       el.className = 'w-8 h-8 rounded-full bg-primary border-2 border-white shadow-lg';
       el.style.backgroundColor = color;
       
-      return new mapboxgl.Marker(el)
+      const marker = new mapboxgl.Marker(el)
         .setLngLat([lng, lat])
-        .addTo(map.current!);
+        .addTo(mapInstance.current!);
+
+      return marker;
     });
 
-    setMarkerRefs(newMarkers);
+    markersRef.current = newMarkers;
 
     return () => {
-      newMarkers.forEach(marker => marker.remove());
+      markersRef.current.forEach(marker => marker.remove());
+      markersRef.current = [];
     };
   }, [markers]);
 
