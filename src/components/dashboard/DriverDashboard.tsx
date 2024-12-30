@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Car, MapPin, Clock } from "lucide-react";
+import { Car } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { LocationMap } from "../map/LocationMap";
+import { ActiveRideCard } from "./ActiveRideCard";
+import { AvailableRideCard } from "./AvailableRideCard";
 
 interface Ride {
   id: string;
@@ -158,65 +158,7 @@ export function DriverDashboard() {
     return (
       <div className="space-y-6">
         <h1 className="text-3xl font-bold">Active Ride</h1>
-        
-        <Card>
-          <CardHeader>
-            <CardTitle>Current Ride</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <LocationMap 
-              markers={[
-                { lat: activeRide.pickup_latitude, lng: activeRide.pickup_longitude, color: '#00FF00' },
-                { lat: activeRide.dropoff_latitude, lng: activeRide.dropoff_longitude, color: '#FF0000' },
-              ]}
-              center={[activeRide.pickup_longitude, activeRide.pickup_latitude]}
-            />
-
-            <div className="flex items-center justify-between">
-              <div className="space-y-2">
-                <div className="flex items-center text-sm text-gray-500">
-                  <Clock className="mr-2 h-4 w-4" />
-                  {new Date(activeRide.created_at).toLocaleDateString()}
-                </div>
-                <div className="flex items-center text-sm">
-                  <MapPin className="mr-2 h-4 w-4 text-gray-500" />
-                  <span>
-                    ({activeRide.pickup_latitude.toFixed(4)}, {activeRide.pickup_longitude.toFixed(4)})
-                    {" → "}
-                    ({activeRide.dropoff_latitude.toFixed(4)}, {activeRide.dropoff_longitude.toFixed(4)})
-                  </span>
-                </div>
-              </div>
-              <div className="text-right">
-                <div className="font-semibold">
-                  ${activeRide.estimated_price}
-                </div>
-                <div className="text-sm text-gray-500 capitalize">
-                  {activeRide.status.replace('_', ' ')}
-                </div>
-              </div>
-            </div>
-
-            <div className="flex gap-4">
-              {activeRide.status === 'accepted' && (
-                <Button 
-                  className="flex-1"
-                  onClick={() => updateRideStatus('in_progress')}
-                >
-                  Start Ride
-                </Button>
-              )}
-              {activeRide.status === 'in_progress' && (
-                <Button 
-                  className="flex-1"
-                  onClick={() => updateRideStatus('completed')}
-                >
-                  Complete Ride
-                </Button>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+        <ActiveRideCard ride={activeRide} onUpdateStatus={updateRideStatus} />
       </div>
     );
   }
@@ -237,44 +179,11 @@ export function DriverDashboard() {
             </div>
           ) : (
             availableRides.map((ride) => (
-              <Card key={ride.id}>
-                <CardContent className="space-y-4 p-4">
-                  <LocationMap 
-                    markers={[
-                      { lat: ride.pickup_latitude, lng: ride.pickup_longitude, color: '#00FF00' },
-                      { lat: ride.dropoff_latitude, lng: ride.dropoff_longitude, color: '#FF0000' },
-                    ]}
-                    center={[ride.pickup_longitude, ride.pickup_latitude]}
-                  />
-                  
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-2">
-                      <div className="flex items-center text-sm text-gray-500">
-                        <Clock className="mr-2 h-4 w-4" />
-                        {new Date(ride.created_at).toLocaleDateString()}
-                      </div>
-                      <div className="flex items-center text-sm">
-                        <MapPin className="mr-2 h-4 w-4 text-gray-500" />
-                        <span>
-                          ({ride.pickup_latitude.toFixed(4)}, {ride.pickup_longitude.toFixed(4)})
-                          {" → "}
-                          ({ride.dropoff_latitude.toFixed(4)}, {ride.dropoff_longitude.toFixed(4)})
-                        </span>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <div className="text-right">
-                        <div className="font-semibold">
-                          ${ride.estimated_price}
-                        </div>
-                      </div>
-                      <Button onClick={() => acceptRide(ride.id)}>
-                        Accept
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+              <AvailableRideCard 
+                key={ride.id} 
+                ride={ride} 
+                onAccept={acceptRide}
+              />
             ))
           )}
         </CardContent>
