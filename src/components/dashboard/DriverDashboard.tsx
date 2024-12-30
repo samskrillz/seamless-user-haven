@@ -16,6 +16,7 @@ interface Ride {
   dropoff_longitude: number;
   estimated_price: number;
   passenger_id: string;
+  driver_id: string | null;
 }
 
 export function DriverDashboard() {
@@ -78,7 +79,7 @@ export function DriverDashboard() {
       )
       .on('postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'rides' },
-        (payload) => {
+        async (payload) => {
           console.log('Updated ride:', payload);
           const updatedRide = payload.new as Ride;
           
@@ -212,4 +213,4 @@ export function DriverDashboard() {
       </Card>
     </div>
   );
-}
+};
